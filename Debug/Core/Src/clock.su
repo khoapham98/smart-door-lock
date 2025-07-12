@@ -1,0 +1,5 @@
+../Core/Src/clock.c:15:6:APB2_clock_enable	24	static
+../Core/Src/clock.c:25:6:APB1_clock_enable	24	static
+../Core/Src/clock.c:35:6:AHB2_clock_enable	24	static
+../Core/Src/clock.c:45:6:AHB1_clock_enable	24	static
+../Core/Src/clock.c:52:6:RCC_Init	24	static

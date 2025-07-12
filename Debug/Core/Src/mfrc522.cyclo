@@ -1,0 +1,3 @@
+../Core/Src/mfrc522.c:11:6:MFRC522_writeDATA	8
+../Core/Src/mfrc522.c:45:9:MFRC522_readDATA	8
+../Core/Src/mfrc522.c:88:6:SPI_Init	1
