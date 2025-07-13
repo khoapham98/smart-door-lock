@@ -13,7 +13,7 @@ void delay_microsec(uint32_t time)
 {
 	microsec_config();
 	cnt = 0;
-	while (cnt <= time);
+	while (cnt < time);
 }
 
 void delay_millisec(uint32_t time)
@@ -32,14 +32,9 @@ void delay_sec(uint32_t time)
 
 void TIM1_UP_TIM10_IRQHandler()
 {
-	uint16_t* TIM1_SR  = (uint16_t*) (TIM1_BASE_ADDR + 0x10);
-	uint16_t* TIM1_CNT = (uint16_t*) (TIM1_BASE_ADDR + 0x24);
-
-	/* reset counter value */
-	*TIM1_CNT = 0;
-	while ((*TIM1_SR & 1) == 0);
-	*TIM1_SR &= ~1;
 	cnt++;
+	uint16_t* TIM1_SR  = (uint16_t*) (TIM1_BASE_ADDR + 0x10);
+	*TIM1_SR &= ~1;
 }
 
 void microsec_config()
@@ -47,10 +42,10 @@ void microsec_config()
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);
 	uint16_t* TIM1_EGR = (uint16_t*) (TIM1_BASE_ADDR + 0x14);
-	/* set CK_CNT = 1kHz */
+	/* set CK_CNT = 32MHz -> 1 Tick = 31.25ps */
 	*TIM1_PSC = 1 - 1;
 
-	/* set auto-reload value */
+	/* set auto-reload value -> 32 Tick = 1us */
 	*TIM1_ARR = 32 - 1;
 
 	/* (force) generate update */
@@ -62,10 +57,10 @@ void millisec_config()
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);
 	uint16_t* TIM1_EGR = (uint16_t*) (TIM1_BASE_ADDR + 0x14);
-	/* set CK_CNT = 1kHz */
+	/* set CK_CNT = 1MHz -> 1 Tick = 1us */
 	*TIM1_PSC = 32 - 1;
 
-	/* set auto-reload value */
+	/* set auto-reload value -> 1000 Tick = 1ms */
 	*TIM1_ARR = 1000 - 1;
 
 	/* (force) generate update */
@@ -77,10 +72,10 @@ void sec_config()
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);
 	uint16_t* TIM1_EGR = (uint16_t*) (TIM1_BASE_ADDR + 0x14);
-	/* set CK_CNT = 1kHz */
+	/* set CK_CNT = 1kHz -> 1 Tick = 1ms */
 	*TIM1_PSC = 32000 - 1;
 
-	/* set auto-reload value */
+	/* set auto-reload value -> 1000 Tick = 1s */
 	*TIM1_ARR = 1000 - 1;
 
 	/* (force) generate update */

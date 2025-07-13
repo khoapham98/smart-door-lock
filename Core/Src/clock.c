@@ -9,7 +9,7 @@
 #include "clock.h"
 
 /**
- * @brief  enable clock for APB2 peripheral
+ * @brief  enable 32MHz clock for APB2 peripheral
  * @param  peripheral: name of the APB2 peripheral you want enable clock
  */
 void APB2_clock_enable(APB2_periph_t peripheral)
@@ -19,7 +19,7 @@ void APB2_clock_enable(APB2_periph_t peripheral)
 }
 
 /**
- * @brief  enable clock for APB1 peripheral
+ * @brief  enable 32MHz clock for APB1 peripheral
  * @param  peripheral: name of the APB1 peripheral you want enable clock
  */
 void APB1_clock_enable(APB1_periph_t peripheral)
@@ -29,7 +29,7 @@ void APB1_clock_enable(APB1_periph_t peripheral)
 }
 
 /**
- * @brief  enable clock for AHB2 peripheral
+ * @brief  enable 32MHz clock for AHB2 peripheral
  * @param  peripheral: name of the AHB2 peripheral you want enable clock
  */
 void AHB2_clock_enable(AHB2_periph_t peripheral)
@@ -39,7 +39,7 @@ void AHB2_clock_enable(AHB2_periph_t peripheral)
 }
 
 /**
- * @brief  enable clock for AHB1 peripheral
+ * @brief  enable 32MHz clock for AHB1 peripheral
  * @param  peripheral: name of the AHB1 peripheral you want enable clock
  */
 void AHB1_clock_enable(AHB1_periph_t peripheral)
