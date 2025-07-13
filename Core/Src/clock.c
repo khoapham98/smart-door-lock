@@ -62,12 +62,13 @@ void RCC_Init()
 	*RCC_PLLCFGR &= ~(0x3F << 0);
 	*RCC_PLLCFGR |= 8 << 0;
 
-	/* select N = 64 -> f_PLL = 64MHz */
+	/* select N = 128 -> f_PLL = 128MHz */
 	*RCC_PLLCFGR &= ~(0x1FF << 6);
-	*RCC_PLLCFGR |= 64 << 6;
+	*RCC_PLLCFGR |= 128 << 6;
 
-	/* select P = 2 -> f_PLL = 32MHz */
+	/* select P = 4 -> f_PLL = 32MHz */
 	*RCC_PLLCFGR &= ~(0b11 << 16);
+	*RCC_PLLCFGR |= 0b01 << 16;
 
 	/* enable HSE clock */
 	*RCC_CR |= 1 << 16;
