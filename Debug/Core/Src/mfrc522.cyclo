@@ -1,3 +1,9 @@
-../Core/Src/mfrc522.c:11:6:MFRC522_writeDATA	8
-../Core/Src/mfrc522.c:45:9:MFRC522_readDATA	8
-../Core/Src/mfrc522.c:88:6:SPI_Init	1
+../Core/Src/MFRC522.c:21:6:write_DATA	1
+../Core/Src/MFRC522.c:32:9:read_DATA	1
+../Core/Src/MFRC522.c:40:6:MFRC522_reset	1
+../Core/Src/MFRC522.c:49:6:MFRC522_Init	1
+../Core/Src/MFRC522.c:54:16:SPI_Receive	7
+../Core/Src/MFRC522.c:80:13:SPI_Transmit	7
+../Core/Src/MFRC522.c:107:13:select_MFRC522	1
+../Core/Src/MFRC522.c:116:13:NOT_select_MFRC522	1
+../Core/Src/MFRC522.c:132:6:SPI_Init	1

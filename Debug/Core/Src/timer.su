@@ -1,3 +1,8 @@
-../Core/Src/timer.c:12:6:TIM1_UP_TIM10_IRQHandler	16	static
-../Core/Src/timer.c:25:6:delay_sec	16	static
-../Core/Src/timer.c:31:6:TIM_Init	32	static
+../Core/Src/timer.c:15:6:delay_microsec	16	static
+../Core/Src/timer.c:22:6:delay_millisec	16	static
+../Core/Src/timer.c:29:6:delay_sec	16	static
+../Core/Src/timer.c:36:6:TIM1_UP_TIM10_IRQHandler	16	static
+../Core/Src/timer.c:43:13:microsec_config	24	static
+../Core/Src/timer.c:58:13:millisec_config	24	static
+../Core/Src/timer.c:73:13:sec_config	24	static
+../Core/Src/timer.c:91:6:TIM_Init	32	static

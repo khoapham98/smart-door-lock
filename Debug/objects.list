@@ -1,6 +1,6 @@
+"./Core/Src/MFRC522.o"
 "./Core/Src/clock.o"
 "./Core/Src/main.o"
-"./Core/Src/mfrc522.o"
 "./Core/Src/stm32f4xx_hal_msp.o"
 "./Core/Src/stm32f4xx_it.o"
 "./Core/Src/syscalls.o"

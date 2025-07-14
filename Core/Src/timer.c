@@ -8,6 +8,9 @@
 #include "clock.h"
 #include "timer.h"
 static int cnt = 0;
+static void sec_config();
+static void millisec_config();
+static void microsec_config();
 
 void delay_microsec(uint32_t time)
 {
@@ -37,7 +40,7 @@ void TIM1_UP_TIM10_IRQHandler()
 	*TIM1_SR &= ~1;
 }
 
-void microsec_config()
+static void microsec_config()
 {
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);
@@ -52,7 +55,7 @@ void microsec_config()
 	*TIM1_EGR |= 1 << 0;
 }
 
-void millisec_config()
+static void millisec_config()
 {
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);
@@ -67,7 +70,7 @@ void millisec_config()
 	*TIM1_EGR |= 1 << 0;
 }
 
-void sec_config()
+static void sec_config()
 {
 	uint16_t* TIM1_PSC = (uint16_t*) (TIM1_BASE_ADDR + 0x28);
 	uint16_t* TIM1_ARR = (uint16_t*) (TIM1_BASE_ADDR + 0x2C);

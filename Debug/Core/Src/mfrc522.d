@@ -1,4 +1,4 @@
-Core/Src/mfrc522.o: ../Core/Src/mfrc522.c ../Core/Inc/main.h \
+Core/Src/MFRC522.o: ../Core/Src/MFRC522.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -24,7 +24,7 @@ Core/Src/mfrc522.o: ../Core/Src/mfrc522.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h \
- ../Core/Inc/clock.h ../Core/Inc/mfrc522.h
+ ../Core/Inc/clock.h ../Core/Inc/timer.h ../Core/Inc/MFRC522.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -52,4 +52,5 @@ Core/Src/mfrc522.o: ../Core/Src/mfrc522.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h:
 ../Core/Inc/clock.h:
-../Core/Inc/mfrc522.h:
+../Core/Inc/timer.h:
+../Core/Inc/MFRC522.h:
