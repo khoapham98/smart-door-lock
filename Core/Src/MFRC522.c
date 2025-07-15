@@ -14,24 +14,7 @@ static void SPI_Transmit(uint8_t reg_addr, uint8_t _data);
 static uint8_t SPI_Receive(uint8_t reg_addr);
 static void SetBitMask(uint8_t reg_addr, uint8_t mask);
 static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
-static uint8_t MFRC522_ToCard(uint8_t command, uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint32_t *backLen);
-
-uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
-{
-	uint8_t status;
-	uint32_t backBits;	// The received data bits
-
-	MFRC522_write(BitFramingReg, 0x07);		//TxLastBists = BitFramingReg[2..0]
-	TagType[0] = reqMode;
-
-	status = MFRC522_ToCard(PCD_TRANSCEIVE, TagType, 1, TagType, &backBits);
-	if ((status != MI_OK) || (backBits != 0x10))
-	{
-		status = MI_ERR;
-	}
-
-	return status;
-}
+static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
 
 uint8_t MFRC522_Anticoll(uint8_t *serNum)
 {
@@ -44,8 +27,8 @@ uint8_t MFRC522_Anticoll(uint8_t *serNum)
 
     serNum[0] = PICC_ANTICOLL;
     serNum[1] = 0x20;
-    status = MFRC522_ToCard(PCD_TRANSCEIVE, serNum, 2, serNum, &unLen);
 
+    status = MFRC522_send2Card(PCD_TRANSCEIVE, serNum, 2, serNum, &unLen);
     if (status == MI_OK)
 	{
     	 //Check card serial number
@@ -62,114 +45,65 @@ uint8_t MFRC522_Anticoll(uint8_t *serNum)
     return status;
 }
 
-static uint8_t MFRC522_ToCard(uint8_t command, uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint32_t *backLen)
+uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
 {
-	uint8_t status = MI_ERR;
-	uint8_t irqEn = 0x00;
-	uint8_t waitIRq = 0x00;
-	uint8_t lastBits;
-	uint8_t n;
-	uint32_t i;
+	uint8_t status;
+	uint32_t backBits;	// The received data bits
 
-    switch (command)
-    {
-        case PCD_AUTHENT:		// Certification cards close
-		{
-			irqEn = 0x12;
-			waitIRq = 0x10;
-			break;
-		}
-		case PCD_TRANSCEIVE:	// Transmit FIFO data
-		{
-			irqEn = 0x77;
-			waitIRq = 0x30;
-			break;
-		}
-		default:
-			break;
-    }
+	MFRC522_write(BitFramingReg, 0x07);		//TxLastBists = BitFramingReg[2..0]
+	TagType[0] = reqMode;
 
-    MFRC522_write(CommIEnReg, irqEn|0x80);	// Interrupt request
-    ClearBitMask(CommIrqReg, 0x80);			// Clear all interrupt request bit
-    SetBitMask(FIFOLevelReg, 0x80);			// FlushBuffer=1, FIFO Initialization
-
-	MFRC522_write(CommandReg, PCD_IDLE);	// NO action; Cancel the current command
-
-	// Writing data to the FIFO
-    for (i=0; i<sendLen; i++)
-    {
-		MFRC522_write(FIFODataReg, sendData[i]);
+	status = MFRC522_send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backBits);
+	if ((status != MI_OK) || (backBits != 0x10))
+	{
+		status = MI_ERR;
 	}
 
-    // Execute the command
-	MFRC522_write(CommandReg, command);
-    if (command == PCD_TRANSCEIVE)
-    {
-		SetBitMask(BitFramingReg, 0x80);		// StartSend=1,transmission of data starts
+	return status;
+}
+
+static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen)
+{
+	uint8_t irq = 0;
+	if (cmd == PCD_TRANSCEIVE) irq = 0x30;
+	else if (cmd == PCD_AUTHENT) irq = 0x10;
+
+	MFRC522_write(ComIEnReg, irq | 0x80); 	/* enable interrupt */
+	MFRC522_write(ComIrqReg, 0x7F);			/* clear all interrupt flags */
+	MFRC522_write(FIFOLevelReg, 0x80);		/* clear FIFO */
+	MFRC522_write(CommandReg, PCD_IDLE);
+
+	/* write data into FIFO */
+	for (int i = 0; i < datalen; i++)
+	{
+		MFRC522_write(FIFODataReg, _data[i]);
 	}
 
-    // Waiting to receive data to complete
-	i = 2000;	// i according to the clock frequency adjustment, the operator M1 card maximum waiting time 25ms
-    do
-    {
-		//CommIrqReg[7..0]
-		//Set1 TxIRq RxIRq IdleIRq HiAlerIRq LoAlertIRq ErrIRq TimerIRq
-        n = MFRC522_read(CommIrqReg);
-        i--;
-    }
-    while ((i!=0) && !(n&0x01) && !(n&waitIRq));
+	/* send command */
+	MFRC522_write(CommandReg, cmd);
+	if (cmd == PCD_TRANSCEIVE)
+	{
+		SetBitMask(BitFramingReg, 0x80); /* start send data from FIFO */
+	}
 
-    ClearBitMask(BitFramingReg, 0x80);			//StartSend=0
+	uint16_t timeout = 10000;
+	while (timeout-- && !(MFRC522_read(ComIrqReg) & irq));
+	if (timeout == 0) return MI_ERR;
 
-    if (i != 0)
-    {
-        if(!(MFRC522_read(ErrorReg) & 0x1B))	//BufferOvfl Collerr CRCErr ProtecolErr
-        {
-            status = MI_OK;
-            if (n & irqEn & 0x01)
-            {
-				status = MI_NOTAGERR;
-			}
+	/* check for error */
+	if (MFRC522_read(ErrorReg) & 0x1B)	{ return MI_ERR; }
+	ClearBitMask(BitFramingReg, 0x80);
 
-            if (command == PCD_TRANSCEIVE)
-            {
-               	n = MFRC522_read(FIFOLevelReg);
-              	lastBits = MFRC522_read(ControlReg) & 0x07;
-                if (lastBits)
-                {
-					*backLen = (n-1)*8 + lastBits;
-				}
-                else
-                {
-					*backLen = n*8;
-				}
-
-                if (n == 0)
-                {
-					n = 1;
-				}
-                if (n > MAX_LEN)
-                {
-					n = MAX_LEN;
-				}
-
-                // Reading the received data in FIFO
-                for (i=0; i<n; i++)
-                {
-					backData[i] = MFRC522_read(FIFODataReg);
-				}
-            }
-        }
-        else
-        {
-			status = MI_ERR;
+	/* receive data from tag */
+	if (cmd == PCD_TRANSCEIVE)
+	{
+		*returnLen = MFRC522_read(FIFOLevelReg);
+		for (int i = 0; i < *returnLen; i++)
+		{
+			returnData[i] = MFRC522_read(FIFODataReg);
 		}
-    }
-
-    //SetBitMask(ControlReg,0x80);           //timer stops
-    //Write_MFRC522(CommandReg, PCD_IDLE);
-
-    return status;
+	}
+	return MI_OK;
 }
 
 void AntennaOFF()
@@ -208,6 +142,7 @@ void MFRC522_Init()
 	MFRC522_write(TxASKReg, 0x40);		/* force 100% ASK */
 	MFRC522_write(ModeReg, 0x3D);
 	AntennaON();
+	delay_millisec(10);
 }
 
 static void ClearBitMask(uint8_t reg_addr, uint8_t mask)

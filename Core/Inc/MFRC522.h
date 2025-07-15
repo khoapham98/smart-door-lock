@@ -22,7 +22,7 @@
 #define PCD_CALCCRC           0x03               // activates the CRC coprocessor or performs a self-test
 
 // Commands sent to the PICC.
-#define PICC_REQIDL           0x26               // REQuest command, Type A. Invites PICCs in state IDLE to go to READY and prepare for anticollision or selection. 7 bit frame.
+#define PICC_REQA             0x26               // REQuest command, Type A. Invites PICCs in state IDLE to go to READY and prepare for anticollision or selection. 7 bit frame.
 #define PICC_REQALL           0x52               // Wake-UP command, Type A. Invites PICCs in state IDLE and HALT to go to READY(*) and prepare for anticollision or selection. 7 bit frame.
 #define PICC_ANTICOLL         0x93               // Anti collision/Select, Cascade Level 1
 #define PICC_SElECTTAG        0x93               // Anti collision/Select, Cascade Level 2
@@ -45,9 +45,9 @@
 /* Page 0: Command and status Registers */
 #define     Reserved00            0x00
 #define     CommandReg            0x01
-#define     CommIEnReg            0x02
+#define     ComIEnReg             0x02
 #define     DivlEnReg             0x03
-#define     CommIrqReg            0x04
+#define     ComIrqReg             0x04
 #define     DivIrqReg             0x05
 #define     ErrorReg              0x06
 #define     Status1Reg            0x07
