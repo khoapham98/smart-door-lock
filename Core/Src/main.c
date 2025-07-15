@@ -2,8 +2,8 @@
 #include "clock.h"
 #include "timer.h"
 #include "MFRC522.h"
-
 int tmp = 0;
+uint8_t str[16];
 int main()
 {
 	RCC_Init();
@@ -13,11 +13,8 @@ int main()
 
 	while (1)
 	{
-		tmp = read_DATA(0x37);
-		delay_sec(2);
-		tmp = read_DATA(0x33);
-		delay_sec(2);
-		tmp = read_DATA(0x36);
+		tmp = MFRC522_Request(PICC_REQIDL, str);
+		tmp = MFRC522_Anticoll(str);
 		delay_sec(3);
 	}
 	return 0;

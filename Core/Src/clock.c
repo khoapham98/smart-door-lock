@@ -48,7 +48,9 @@ void AHB1_clock_enable(AHB1_periph_t peripheral)
 	*RCC_AHB1ENR |= 1 << peripheral;
 }
 
-/** SYSTEM CLOCK = 32MHz */
+/**
+ * @brief  This function is used for configure SYSTEM CLOCK = 32MHz
+ */
 void RCC_Init()
 {
 	uint32_t* RCC_CR = (uint32_t*) (RCC_BASE_ADDR + 0x00);
