@@ -12,29 +12,174 @@ static void select_MFRC522();
 static void NOT_select_MFRC522();
 static void SPI_Transmit(uint8_t reg_addr, uint8_t _data);
 static uint8_t SPI_Receive(uint8_t reg_addr);
+static void SetBitMask(uint8_t reg_addr, uint8_t mask);
+static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
+static uint8_t MFRC522_ToCard(uint8_t command, uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint32_t *backLen);
 
-/**
- * @brief  This function is used to write 1 byte data into any register of MRFC522
- * @param  reg_address: address of the register to write data to
- * 		   data: data want to write
- */
-void write_DATA(uint8_t reg_address, uint8_t data)
+uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
 {
-	select_MFRC522();
-	SPI_Transmit(reg_address, data);
-	NOT_select_MFRC522();
+	uint8_t status;
+	uint32_t backBits;	// The received data bits
+
+	MFRC522_write(BitFramingReg, 0x07);		//TxLastBists = BitFramingReg[2..0]
+	TagType[0] = reqMode;
+
+	status = MFRC522_ToCard(PCD_TRANSCEIVE, TagType, 1, TagType, &backBits);
+	if ((status != MI_OK) || (backBits != 0x10))
+	{
+		status = MI_ERR;
+	}
+
+	return status;
 }
 
-/**
- * @brief  This function is used to read 1 byte data from any register of MRFC522
- * @param  reg_address: address of the register to read data from
- */
-uint8_t read_DATA(uint8_t reg_address)
+uint8_t MFRC522_Anticoll(uint8_t *serNum)
 {
-	select_MFRC522();
-	uint8_t val = SPI_Receive(reg_address);
-	NOT_select_MFRC522();
-	return val;
+	uint8_t status;
+    uint8_t i;
+    uint8_t serNumCheck=0;
+    uint32_t unLen;
+
+	MFRC522_write(BitFramingReg, 0x00);		//TxLastBists = BitFramingReg[2..0]
+
+    serNum[0] = PICC_ANTICOLL;
+    serNum[1] = 0x20;
+    status = MFRC522_ToCard(PCD_TRANSCEIVE, serNum, 2, serNum, &unLen);
+
+    if (status == MI_OK)
+	{
+    	 //Check card serial number
+		for (i=0; i<4; i++)
+		{
+		 	serNumCheck ^= serNum[i];
+		}
+		if (serNumCheck != serNum[i])
+		{
+			status = MI_ERR;
+		}
+    }
+
+    return status;
+}
+
+static uint8_t MFRC522_ToCard(uint8_t command, uint8_t *sendData, uint8_t sendLen, uint8_t *backData, uint32_t *backLen)
+{
+	uint8_t status = MI_ERR;
+	uint8_t irqEn = 0x00;
+	uint8_t waitIRq = 0x00;
+	uint8_t lastBits;
+	uint8_t n;
+	uint32_t i;
+
+    switch (command)
+    {
+        case PCD_AUTHENT:		// Certification cards close
+		{
+			irqEn = 0x12;
+			waitIRq = 0x10;
+			break;
+		}
+		case PCD_TRANSCEIVE:	// Transmit FIFO data
+		{
+			irqEn = 0x77;
+			waitIRq = 0x30;
+			break;
+		}
+		default:
+			break;
+    }
+
+    MFRC522_write(CommIEnReg, irqEn|0x80);	// Interrupt request
+    ClearBitMask(CommIrqReg, 0x80);			// Clear all interrupt request bit
+    SetBitMask(FIFOLevelReg, 0x80);			// FlushBuffer=1, FIFO Initialization
+
+	MFRC522_write(CommandReg, PCD_IDLE);	// NO action; Cancel the current command
+
+	// Writing data to the FIFO
+    for (i=0; i<sendLen; i++)
+    {
+		MFRC522_write(FIFODataReg, sendData[i]);
+	}
+
+    // Execute the command
+	MFRC522_write(CommandReg, command);
+    if (command == PCD_TRANSCEIVE)
+    {
+		SetBitMask(BitFramingReg, 0x80);		// StartSend=1,transmission of data starts
+	}
+
+    // Waiting to receive data to complete
+	i = 2000;	// i according to the clock frequency adjustment, the operator M1 card maximum waiting time 25ms
+    do
+    {
+		//CommIrqReg[7..0]
+		//Set1 TxIRq RxIRq IdleIRq HiAlerIRq LoAlertIRq ErrIRq TimerIRq
+        n = MFRC522_read(CommIrqReg);
+        i--;
+    }
+    while ((i!=0) && !(n&0x01) && !(n&waitIRq));
+
+    ClearBitMask(BitFramingReg, 0x80);			//StartSend=0
+
+    if (i != 0)
+    {
+        if(!(MFRC522_read(ErrorReg) & 0x1B))	//BufferOvfl Collerr CRCErr ProtecolErr
+        {
+            status = MI_OK;
+            if (n & irqEn & 0x01)
+            {
+				status = MI_NOTAGERR;
+			}
+
+            if (command == PCD_TRANSCEIVE)
+            {
+               	n = MFRC522_read(FIFOLevelReg);
+              	lastBits = MFRC522_read(ControlReg) & 0x07;
+                if (lastBits)
+                {
+					*backLen = (n-1)*8 + lastBits;
+				}
+                else
+                {
+					*backLen = n*8;
+				}
+
+                if (n == 0)
+                {
+					n = 1;
+				}
+                if (n > MAX_LEN)
+                {
+					n = MAX_LEN;
+				}
+
+                // Reading the received data in FIFO
+                for (i=0; i<n; i++)
+                {
+					backData[i] = MFRC522_read(FIFODataReg);
+				}
+            }
+        }
+        else
+        {
+			status = MI_ERR;
+		}
+    }
+
+    //SetBitMask(ControlReg,0x80);           //timer stops
+    //Write_MFRC522(CommandReg, PCD_IDLE);
+
+    return status;
+}
+
+void AntennaOFF()
+{
+	ClearBitMask(TxControlReg, 0x03);
+}
+
+void AntennaON()
+{
+	SetBitMask(TxControlReg, 0x03);
 }
 
 void MFRC522_reset()
@@ -48,7 +193,57 @@ void MFRC522_reset()
 
 void MFRC522_Init()
 {
-	MFRC522_reset();
+	/* configure MFRC522 */
+	MFRC522_write(CommandReg, 0x0F);	/* soft reset */
+	MFRC522_write(TModeReg, 0x80);		/* auto-start */
+	MFRC522_write(TPrescalerReg, 0xA9);	/* f_timer = 13.56e6/(2 * A9h) ~= 39.882KHz -> T_timer ~= 25us */
+	MFRC522_write(TReloadRegH, 0x03); /* set reload value = 03E8h = 1000 */
+	MFRC522_write(TReloadRegL, 0xE8);
+
+	/* used more */
+//	MFRC522_write(TPrescalerReg, 0x3E);
+//	MFRC522_write(TReloadRegH, 0);
+//	MFRC522_write(TReloadRegL, 30);
+
+	MFRC522_write(TxASKReg, 0x40);		/* force 100% ASK */
+	MFRC522_write(ModeReg, 0x3D);
+	AntennaON();
+}
+
+static void ClearBitMask(uint8_t reg_addr, uint8_t mask)
+{
+    uint8_t tmp = MFRC522_read(reg_addr);
+    MFRC522_write(reg_addr, tmp & (~mask));  /* clear bit mask */
+}
+
+static void SetBitMask(uint8_t reg_addr, uint8_t mask)
+{
+    uint8_t tmp = MFRC522_read(reg_addr);
+    MFRC522_write(reg_addr, tmp | mask);  /* set bit mask */
+}
+
+/**
+ * @brief  This function is used to write 1 byte data into any register of MRFC522
+ * @param  reg_address: address of the register to write data to
+ * 		   data: data want to write
+ */
+void MFRC522_write(uint8_t reg_address, uint8_t data)
+{
+	select_MFRC522();
+	SPI_Transmit(reg_address, data);
+	NOT_select_MFRC522();
+}
+
+/**
+ * @brief  This function is used to read 1 byte data from any register of MRFC522
+ * @param  reg_address: address of the register to read data from
+ */
+uint8_t MFRC522_read(uint8_t reg_address)
+{
+	select_MFRC522();
+	uint8_t val = SPI_Receive(reg_address);
+	NOT_select_MFRC522();
+	return val;
 }
 
 static uint8_t SPI_Receive(uint8_t reg_addr)
