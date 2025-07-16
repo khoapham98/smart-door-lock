@@ -53,9 +53,10 @@ void AHB1_clock_enable(AHB1_periph_t peripheral)
  */
 void RCC_Init()
 {
-	uint32_t* RCC_CR = (uint32_t*) (RCC_BASE_ADDR + 0x00);
+	uint32_t* RCC_CR 	  = (uint32_t*) (RCC_BASE_ADDR + 0x00);
 	uint32_t* RCC_PLLCFGR = (uint32_t*) (RCC_BASE_ADDR + 0x04);
-	uint32_t* RCC_CFGR = (uint32_t*) (RCC_BASE_ADDR + 0x08);
+	uint32_t* RCC_CFGR    = (uint32_t*) (RCC_BASE_ADDR + 0x08);
+	uint32_t* FLASH_ACR   = (uint32_t*) (FLASH_INTF_BASE_ADDR + 0x00);
 
 	/* select HSE as PLL clock entry */
 	*RCC_PLLCFGR |= 1 << 22;
@@ -83,6 +84,10 @@ void RCC_Init()
 
 	/* wait until PLL clock is ready */
 	while (((*RCC_CR >> 25) & 1) == 0);
+
+	/* FLASH response time ~= 50ns, but CPU executes 1 cycle in 31.25ns */
+	/* Therefore, 1 wait state is required to allow FLASH to respond in time */
+	*FLASH_ACR |= 1 << 0;
 
 	/* select PLL as system clock */
 	*RCC_CFGR &= ~(0b11 << 0);

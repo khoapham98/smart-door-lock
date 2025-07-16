@@ -59,7 +59,7 @@ typedef enum
 } AHB1_periph_t;
 
 #define RCC_BASE_ADDR 0x40023800
-
+#define FLASH_INTF_BASE_ADDR 0x40023C00
 void APB2_clock_enable(APB2_periph_t peripheral);
 void APB1_clock_enable(APB1_periph_t peripheral);
 void AHB2_clock_enable(AHB2_periph_t peripheral);
