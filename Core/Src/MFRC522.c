@@ -17,31 +17,39 @@ static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
 static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
 static void MFRC522_ClearState();
 static uint8_t check_BCC(uint8_t* data);
+char uid_is_new(uint8_t* recv_buf, uint8_t* uids);
 
-void get_UID(uint8_t* src, uint8_t* dest)
+void get_UID(uint8_t* _uid)
 {
-	for (int i = 0; i < 4; i++)
-	{
-		dest[i] = src[i];
-	}
+	uint8_t tmp[4] = {0};
+	MFRC522_Anticoll(tmp);
+	if (uid_is_new(tmp, _uid));
 }
 
-char uid_is_new(uint8_t* recv_buf, uint8_t uids[][4])
+char uid_is_new(uint8_t* recv_buf, uint8_t* uids)
 {
-	for (int r = 0; r < MAX_UIDs; r++)
-	{
-		int cnt = 0;
 		for (int c = 0; c < 4; c++)
 		{
-			if (recv_buf[c] == uids[r][c])
-			{
-				cnt++;
-			}
+			uids[c] = recv_buf[c];
 		}
-		if (cnt == 4) return 0;
-	}
 	return 1;
 }
+//char uid_is_new(uint8_t* recv_buf, uint8_t uids[][4])
+//{
+//	for (int r = 0; r < MAX_UIDs; r++)
+//	{
+//		int cnt = 0;
+//		for (int c = 0; c < 4; c++)
+//		{
+//			if (recv_buf[c] == uids[r][c])
+//			{
+//				cnt++;
+//			}
+//		}
+//		if (cnt == 4) return 0;
+//	}
+//	return 1;
+//}
 
 static uint8_t check_BCC(uint8_t* uid)
 {
@@ -67,7 +75,10 @@ uint8_t MFRC522_Anticoll(uint8_t* uid_out)
 
     if (status == MI_OK && unLen == 5 && check_BCC(recv_buffer) == MI_OK)
     {
-    	get_UID(recv_buffer, uid_out);
+		for (int i = 0; i < 4; i++)
+		{
+			uid_out[i] = recv_buffer[i];
+		}
     }
 
     return status;

@@ -111,9 +111,8 @@
 #define     Reserved32            0x3D
 #define     Reserved33            0x3E
 #define     Reserved34			  0x3F
-
+void get_UID(uint8_t* _uid);
 uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType);
-//uint8_t MFRC522_Anticoll(uint8_t *serNum);
 uint8_t MFRC522_Anticoll(uint8_t *uid_out);
 void AntennaOFF();
 void AntennaON();

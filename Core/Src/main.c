@@ -19,7 +19,8 @@ int main()
 	{
 		if (MFRC522_Request(PICC_REQA, str) == MI_OK)
 		{
-			MFRC522_Anticoll(uid);
+//			MFRC522_Anticoll(uid);
+			get_UID(uid);
 		}
 		delay_millisec(100);
 	}
