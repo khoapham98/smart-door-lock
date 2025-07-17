@@ -5,9 +5,7 @@
 
 uint8_t str[16];
 uint8_t uid_ls[MAX_UIDs][4];
-uint8_t uid_cnt = 0;
-uint8_t uid[4];
-
+int check;
 int main()
 {
 	RCC_Init();
@@ -19,8 +17,7 @@ int main()
 	{
 		if (MFRC522_Request(PICC_REQA, str) == MI_OK)
 		{
-//			MFRC522_Anticoll(uid);
-			get_UID(uid);
+			check = MFRC522_CheckAndStoreUID(uid_ls);
 		}
 		delay_millisec(100);
 	}

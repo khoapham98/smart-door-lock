@@ -8,48 +8,92 @@
 #include "clock.h"
 #include "timer.h"
 #include "MFRC522.h"
-static void select_MFRC522();
-static void NOT_select_MFRC522();
-static void SPI_Transmit(uint8_t reg_addr, uint8_t _data);
-static uint8_t SPI_Receive(uint8_t reg_addr);
+uint8_t uid_cnt = 0;
 static void SetBitMask(uint8_t reg_addr, uint8_t mask);
 static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
-static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
+static void MFRC522_write(uint8_t reg_address, uint8_t data);
 static void MFRC522_ClearState();
-static uint8_t check_BCC(uint8_t* data);
-char uid_is_new(uint8_t* recv_buf, uint8_t* uids);
+static uint8_t MFRC522_read(uint8_t reg_address);
+static uint8_t MFRC522_Anticoll(uint8_t *uid_out);
+static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
+static uint8_t UID_is_new(uint8_t* recv_buf, uint8_t uids[][4]);
+static uint8_t UID_list_is_NOT_full();
+static void MFRC522_getUID(uint8_t* src, uint8_t dest[][4]);
 
-void get_UID(uint8_t* _uid)
+/* ====== Public API ====== */
+/**
+ * @brief  Checks for a new UID and stores it if not already in the list
+ * @param  uid_list: A 2D array to store registered UIDs
+ * @return 1: if a new UID was successfully stored,
+ * 		   0: if it already exists or the list is full.
+ */
+uint8_t MFRC522_CheckAndStoreUID(uint8_t uid_list[][4])
 {
 	uint8_t tmp[4] = {0};
 	MFRC522_Anticoll(tmp);
-	if (uid_is_new(tmp, _uid));
+	if (UID_is_new(tmp, uid_list) && UID_list_is_NOT_full())
+	{
+		MFRC522_getUID(tmp, uid_list);
+		return 1;
+	}
+	return 0;
 }
 
-char uid_is_new(uint8_t* recv_buf, uint8_t* uids)
+/**
+ * @brief  Sends a REQA command to detect if a card is present
+ * @param reqMode The request mode: REQA (0x26) or WUPA (0x52)
+ * @param TagType Buffer to store the 2-byte ATQA response
+ * @return MI_OK if a card is detected, MI_ERR otherwise
+ */
+uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
 {
+	uint8_t status;
+	uint32_t backlen;
+	MFRC522_ClearState();
+	MFRC522_write(BitFramingReg, 0x07);
+	TagType[0] = reqMode;
+
+	status = MFRC522_send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backlen);
+	if ((status != MI_OK) || (backlen != 2))
+	{
+		status = MI_ERR;
+	}
+
+	return status;
+}
+
+/* ====== BCC & UID Management ====== */
+static uint8_t UID_is_new(uint8_t* recv_buf, uint8_t uids[][4])
+{
+	for (int r = 0; r < MAX_UIDs; r++)
+	{
+		int uid_existed = 1;
 		for (int c = 0; c < 4; c++)
 		{
-			uids[c] = recv_buf[c];
+			if (recv_buf[c] != uids[r][c])
+			{
+				uid_existed = 0;
+				break;
+			}
 		}
+		if (uid_existed) return 0;
+	}
 	return 1;
 }
-//char uid_is_new(uint8_t* recv_buf, uint8_t uids[][4])
-//{
-//	for (int r = 0; r < MAX_UIDs; r++)
-//	{
-//		int cnt = 0;
-//		for (int c = 0; c < 4; c++)
-//		{
-//			if (recv_buf[c] == uids[r][c])
-//			{
-//				cnt++;
-//			}
-//		}
-//		if (cnt == 4) return 0;
-//	}
-//	return 1;
-//}
+
+static uint8_t UID_list_is_NOT_full()
+{
+	return (uid_cnt < (MAX_UIDs - 1)) ? 1 : 0;
+}
+
+static void MFRC522_getUID(uint8_t* src, uint8_t dest[][4])
+{
+	for (int i = 0; i < 4; i++)
+	{
+		dest[uid_cnt][i] = src[i];
+	}
+	uid_cnt++;
+}
 
 static uint8_t check_BCC(uint8_t* uid)
 {
@@ -61,7 +105,7 @@ static uint8_t check_BCC(uint8_t* uid)
 	return (bcc == uid[4]) ? MI_OK : MI_ERR;
 }
 
-uint8_t MFRC522_Anticoll(uint8_t* uid_out)
+static uint8_t MFRC522_Anticoll(uint8_t* uid_out)
 {
     uint8_t status;
     uint32_t unLen;
@@ -84,23 +128,7 @@ uint8_t MFRC522_Anticoll(uint8_t* uid_out)
     return status;
 }
 
-uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
-{
-	uint8_t status;
-	uint32_t backlen;
-	MFRC522_ClearState();
-	MFRC522_write(BitFramingReg, 0x07);
-	TagType[0] = reqMode;
-
-	status = MFRC522_send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backlen);
-	if ((status != MI_OK) || (backlen != 2))
-	{
-		status = MI_ERR;
-	}
-
-	return status;
-}
-
+/* ====== Core Communication ====== */
 static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen)
 {
 	uint8_t irq = 0;
@@ -157,81 +185,7 @@ static void MFRC522_ClearState()
     ClearBitMask(BitFramingReg, 0x07);      // clear bit framing
 }
 
-void AntennaOFF()
-{
-	ClearBitMask(TxControlReg, 0x03);
-}
-
-void AntennaON()
-{
-	SetBitMask(TxControlReg, 0x03);
-}
-
-void MFRC522_reset()
-{
-	uint32_t* GPIOB_ODR = (uint32_t*) (GPIOB_BASE_ADDR + 0x14);
-	*GPIOB_ODR &= ~(1 << 7);
-	delay_microsec(100);
-	*GPIOB_ODR |= 1 << 7;
-	delay_millisec(50);
-}
-
-void MFRC522_Init()
-{
-	/* configure MFRC522 */
-	MFRC522_write(CommandReg, 0x0F);	/* soft reset */
-	MFRC522_write(TModeReg, 0x80);		/* auto-start */
-	MFRC522_write(TPrescalerReg, 0xA9);	/* f_timer = 13.56e6/(2 * A9h) ~= 39.882KHz -> T_timer ~= 25us */
-	MFRC522_write(TReloadRegH, 0x03); /* set reload value = 03E8h = 1000 */
-	MFRC522_write(TReloadRegL, 0xE8);
-
-	/* used more */
-//	MFRC522_write(TPrescalerReg, 0x3E);
-//	MFRC522_write(TReloadRegH, 0);
-//	MFRC522_write(TReloadRegL, 30);
-
-	MFRC522_write(TxASKReg, 0x40);		/* force 100% ASK */
-	MFRC522_write(ModeReg, 0x3D);
-	AntennaON();
-	delay_millisec(10);
-}
-
-static void ClearBitMask(uint8_t reg_addr, uint8_t mask)
-{
-    uint8_t tmp = MFRC522_read(reg_addr);
-    MFRC522_write(reg_addr, tmp & (~mask));  /* clear bit mask */
-}
-
-static void SetBitMask(uint8_t reg_addr, uint8_t mask)
-{
-    uint8_t tmp = MFRC522_read(reg_addr);
-    MFRC522_write(reg_addr, tmp | mask);  /* set bit mask */
-}
-
-/**
- * @brief  This function is used to write 1 byte data into any register of MRFC522
- * @param  reg_address: address of the register to write data to
- * 		   data: data want to write
- */
-void MFRC522_write(uint8_t reg_address, uint8_t data)
-{
-	select_MFRC522();
-	SPI_Transmit(reg_address, data);
-	NOT_select_MFRC522();
-}
-
-/**
- * @brief  This function is used to read 1 byte data from any register of MRFC522
- * @param  reg_address: address of the register to read data from
- */
-uint8_t MFRC522_read(uint8_t reg_address)
-{
-	select_MFRC522();
-	uint8_t val = SPI_Receive(reg_address);
-	NOT_select_MFRC522();
-	return val;
-}
-
+/* ====== SPI & Slave/Chip Select ===== */
 static uint8_t SPI_Receive(uint8_t reg_addr)
 {
 	uint8_t* SPI_DR = (uint8_t*) (SPI1_BASE_ADDR  + 0x0C);
@@ -300,6 +254,81 @@ static void NOT_select_MFRC522()
 	*GPIOB_ODR |= 1 << 6;
 }
 
+/**
+ * @brief  This function is used to write 1 byte data into any register of MRFC522
+ * @param  reg_address: address of the register to write data to
+ * 		   data: data want to write
+ */
+static void MFRC522_write(uint8_t reg_address, uint8_t data)
+{
+	select_MFRC522();
+	SPI_Transmit(reg_address, data);
+	NOT_select_MFRC522();
+}
+
+/**
+ * @brief  This function is used to read 1 byte data from any register of MRFC522
+ * @param  reg_address: address of the register to read data from
+ */
+static uint8_t MFRC522_read(uint8_t reg_address)
+{
+	select_MFRC522();
+	uint8_t val = SPI_Receive(reg_address);
+	NOT_select_MFRC522();
+	return val;
+}
+
+static void ClearBitMask(uint8_t reg_addr, uint8_t mask)
+{
+    uint8_t tmp = MFRC522_read(reg_addr);
+    MFRC522_write(reg_addr, tmp & (~mask));  /* clear bit mask */
+}
+
+static void SetBitMask(uint8_t reg_addr, uint8_t mask)
+{
+    uint8_t tmp = MFRC522_read(reg_addr);
+    MFRC522_write(reg_addr, tmp | mask);  /* set bit mask */
+}
+
+static void AntennaOFF()
+{
+	ClearBitMask(TxControlReg, 0x03);
+}
+
+static void AntennaON()
+{
+	SetBitMask(TxControlReg, 0x03);
+}
+
+/* ====== Configuration & Initialization ====== */
+void MFRC522_reset()
+{
+	uint32_t* GPIOB_ODR = (uint32_t*) (GPIOB_BASE_ADDR + 0x14);
+	*GPIOB_ODR &= ~(1 << 7);
+	delay_microsec(100);
+	*GPIOB_ODR |= 1 << 7;
+	delay_millisec(50);
+}
+
+void MFRC522_Init()
+{
+	/* configure MFRC522 */
+	MFRC522_write(CommandReg, 0x0F);	/* soft reset */
+	MFRC522_write(TModeReg, 0x80);		/* auto-start */
+	MFRC522_write(TPrescalerReg, 0xA9);	/* f_timer = 13.56e6/(2 * A9h) ~= 39.882KHz -> T_timer ~= 25us */
+	MFRC522_write(TReloadRegH, 0x03); /* set reload value = 03E8h = 1000 */
+	MFRC522_write(TReloadRegL, 0xE8);
+
+	/* used more */
+//	MFRC522_write(TPrescalerReg, 0x3E);
+//	MFRC522_write(TReloadRegH, 0);
+//	MFRC522_write(TReloadRegL, 30);
+
+	MFRC522_write(TxASKReg, 0x40);		/* force 100% ASK */
+	MFRC522_write(ModeReg, 0x3D);
+	AntennaON();
+	delay_millisec(10);
+}
 /**
  * @brief  RFID-MFRC522 initial function
  * PB3	-> SCK
