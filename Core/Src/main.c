@@ -5,7 +5,8 @@
 
 uint8_t str[16];
 uint8_t uid_ls[MAX_UIDs][4];
-int check;
+int add, rm;
+extern uint8_t uid_cnt;
 int main()
 {
 	RCC_Init();
@@ -17,7 +18,14 @@ int main()
 	{
 		if (MFRC522_Request(PICC_REQA, str) == MI_OK)
 		{
-			check = MFRC522_CheckAndStoreUID(uid_ls);
+			if (uid_cnt < 2)
+			{
+				add = MFRC522_CheckAndStoreUID(uid_ls);
+			}
+			else
+			{
+				rm = MFRC522_RemoveUID(uid_ls);
+			}
 		}
 		delay_millisec(100);
 	}
