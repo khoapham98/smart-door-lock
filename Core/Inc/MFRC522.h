@@ -112,7 +112,8 @@
 #define     Reserved34			  0x3F
 
 uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType);
-uint8_t MFRC522_Anticoll(uint8_t *serNum);
+//uint8_t MFRC522_Anticoll(uint8_t *serNum);
+uint8_t MFRC522_Anticoll(uint8_t *uid_out);
 void AntennaOFF();
 void AntennaON();
 void MFRC522_write(uint8_t reg_address, uint8_t data);

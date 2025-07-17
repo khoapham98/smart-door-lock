@@ -15,46 +15,53 @@ static uint8_t SPI_Receive(uint8_t reg_addr);
 static void SetBitMask(uint8_t reg_addr, uint8_t mask);
 static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
 static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
+static void MFRC522_ClearState();
+static uint8_t check_BCC(uint8_t* data);
 
-uint8_t MFRC522_Anticoll(uint8_t *serNum)
+static uint8_t check_BCC(uint8_t* uid)
 {
-	uint8_t status;
-    uint8_t i;
-    uint8_t serNumCheck=0;
-    uint32_t unLen;
-
-	MFRC522_write(BitFramingReg, 0x00);		//TxLastBists = BitFramingReg[2..0]
-
-    serNum[0] = PICC_ANTICOLL;
-    serNum[1] = 0x20;
-
-    status = MFRC522_send2Card(PCD_TRANSCEIVE, serNum, 2, serNum, &unLen);
-    if (status == MI_OK)
+	uint8_t bcc = 0;
+	for (int i = 0; i < 4; i++)
 	{
-    	 //Check card serial number
-		for (i=0; i<4; i++)
-		{
-		 	serNumCheck ^= serNum[i];
-		}
-		if (serNumCheck != serNum[i])
-		{
-			status = MI_ERR;
-		}
+		bcc ^= uid[i];
+	}
+	return (bcc == uid[4]) ? MI_OK : MI_ERR;
+}
+
+uint8_t MFRC522_Anticoll(uint8_t *uid_out)
+{
+    uint8_t status;
+    uint32_t unLen;
+    uint8_t cmd_buffer[2] = { PICC_ANTICOLL, 0x20 };
+    uint8_t recv_buffer[5];
+
+    MFRC522_ClearState();
+    MFRC522_write(BitFramingReg, 0x00);
+
+    status = MFRC522_send2Card(PCD_TRANSCEIVE, cmd_buffer, 2, recv_buffer, &unLen);
+
+    if (status == MI_OK && unLen == 5 && check_BCC(recv_buffer) == MI_OK)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            uid_out[i] = recv_buffer[i];
+        }
     }
 
     return status;
 }
 
+
 uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
 {
 	uint8_t status;
-	uint32_t backBits;	// The received data bits
-
-	MFRC522_write(BitFramingReg, 0x07);		//TxLastBists = BitFramingReg[2..0]
+	uint32_t backlen;
+	MFRC522_ClearState();
+	MFRC522_write(BitFramingReg, 0x07);
 	TagType[0] = reqMode;
 
-	status = MFRC522_send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backBits);
-	if ((status != MI_OK) || (backBits != 0x10))
+	status = MFRC522_send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backlen);
+	if ((status != MI_OK) || (backlen != 2))
 	{
 		status = MI_ERR;
 	}
@@ -65,8 +72,8 @@ uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
 static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen)
 {
 	uint8_t irq = 0;
-	if (cmd == PCD_TRANSCEIVE) irq = 0x30;
-	else if (cmd == PCD_AUTHENT) irq = 0x10;
+	if (cmd == PCD_TRANSCEIVE) 		irq = 0x30;
+	else if (cmd == PCD_AUTHENT) 	irq = 0x10;
 
 	MFRC522_write(ComIEnReg, irq | 0x80); 	/* enable interrupt */
 	MFRC522_write(ComIrqReg, 0x7F);			/* clear all interrupt flags */
@@ -88,7 +95,11 @@ static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, u
 
 	uint16_t timeout = 10000;
 	while (timeout-- && !(MFRC522_read(ComIrqReg) & irq));
-	if (timeout == 0) return MI_ERR;
+	if (timeout == 0)
+	{
+		MFRC522_ClearState();
+		return MI_ERR;
+	}
 
 	/* check for error */
 	if (MFRC522_read(ErrorReg) & 0x1B)	{ return MI_ERR; }
@@ -104,6 +115,14 @@ static uint8_t MFRC522_send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, u
 		}
 	}
 	return MI_OK;
+}
+
+static void MFRC522_ClearState()
+{
+    MFRC522_write(CommandReg, PCD_IDLE);
+    MFRC522_write(ComIrqReg, 0x7F);         // clear interrupt flags
+    MFRC522_write(FIFOLevelReg, 0x80);      // clear FIFO
+    ClearBitMask(BitFramingReg, 0x07);      // clear bit framing
 }
 
 void AntennaOFF()

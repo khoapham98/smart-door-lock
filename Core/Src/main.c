@@ -3,9 +3,10 @@
 #include "timer.h"
 #include <string.h>
 #include "MFRC522.h"
+
 int stt = 0;
 uint8_t str[16];
-uint8_t IDs[5];
+uint8_t UIDs[4];
 int main()
 {
 	RCC_Init();
@@ -15,10 +16,11 @@ int main()
 
 	while (1)
 	{
-		stt = MFRC522_Request(PICC_REQA, str);
-		stt = MFRC522_Anticoll(str);
-		memcpy(IDs, str, 5);
-		delay_sec(1);
+		if (MFRC522_Request(PICC_REQA, str) == MI_OK)
+		{
+			stt = MFRC522_Anticoll(UIDs);
+		}
+		delay_millisec(100);
 	}
 	return 0;
 }
