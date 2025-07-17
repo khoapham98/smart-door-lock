@@ -11,7 +11,8 @@
 #define SPI1_BASE_ADDR  0x40013000
 #define READ  0x80
 #define WRITE 0x7E
-#define MAX_LEN 16
+#define MAX_UIDs 4
+
 // MFRC522 commands. Described in chapter 10 of the datasheet.
 #define PCD_IDLE              0x00               // no action, cancels current command execution
 #define PCD_AUTHENT           0x0E               // performs the MIFARE standard authentication as a reader

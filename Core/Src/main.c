@@ -1,12 +1,13 @@
 #include "main.h"
 #include "clock.h"
 #include "timer.h"
-#include <string.h>
 #include "MFRC522.h"
 
-int stt = 0;
 uint8_t str[16];
-uint8_t UIDs[4];
+uint8_t uid_ls[MAX_UIDs][4];
+uint8_t uid_cnt = 0;
+uint8_t uid[4];
+
 int main()
 {
 	RCC_Init();
@@ -18,7 +19,7 @@ int main()
 	{
 		if (MFRC522_Request(PICC_REQA, str) == MI_OK)
 		{
-			stt = MFRC522_Anticoll(UIDs);
+			MFRC522_Anticoll(uid);
 		}
 		delay_millisec(100);
 	}
