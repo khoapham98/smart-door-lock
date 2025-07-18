@@ -112,9 +112,10 @@
 #define     Reserved33            0x3E
 #define     Reserved34			  0x3F
 
+uint8_t MFRC522_IsValidUID(uint8_t uid_list[][4]);
 uint8_t MFRC522_RemoveUID(uint8_t uid_list[][4]);
 uint8_t MFRC522_CheckAndStoreUID(uint8_t uid_list[][4]);
-uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType);
+uint8_t MFRC522_IsTagPresent();
 void MFRC522_reset();
 void MFRC522_Init();
 void SPI_Init();

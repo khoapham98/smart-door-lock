@@ -13,16 +13,36 @@ static void SetBitMask(uint8_t reg_addr, uint8_t mask);
 static void ClearBitMask(uint8_t reg_addr, uint8_t mask);
 static void write(uint8_t reg_address, uint8_t data);
 static void ClearState();
-static void get_UID(uint8_t* src, uint8_t dest[][4]);
+static void store_UID(uint8_t* src, uint8_t dest[][4]);
 static uint8_t read(uint8_t reg_address);
 static uint8_t anticoll(uint8_t *uid_out);
+static uint8_t sendRequest(uint8_t reqMode);
 static uint8_t send2Card(uint8_t cmd, uint8_t* _data, uint8_t datalen, uint8_t* returnData, uint32_t* returnLen);
 static uint8_t UID_is_new(uint8_t* recv_buf, uint8_t uids[][4]);
 static uint8_t UID_list_is_NOT_full();
 static uint8_t find_UID(uint8_t* _rm, uint8_t _src[][4]);
 static void remove_UID(uint8_t* rm, uint8_t src[][4]);
-
 /* ====== Public API ====== */
+/**
+ * @brief  Checks whether the given UID is authorized for access
+ * 		   This function compares the UID against the stored list of authorized UIDs
+ * @param  uid_list: A 2D array to store registered UIDs
+ * @return 1: The UID is authorized
+ * 		   0: Otherwise
+ */
+uint8_t MFRC522_IsValidUID(uint8_t uid_list[][4])
+{
+	uint8_t tmp[4] = {0};
+	anticoll(tmp);
+	if (!UID_is_new(tmp, uid_list))
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
 
 /**
  * @brief  Removes a UID from the list if it exists
@@ -57,36 +77,28 @@ uint8_t MFRC522_CheckAndStoreUID(uint8_t uid_list[][4])
 	anticoll(tmp);
 	if (UID_is_new(tmp, uid_list) && UID_list_is_NOT_full())
 	{
-		get_UID(tmp, uid_list);
+		store_UID(tmp, uid_list);
 		return 1;
 	}
 	return 0;
 }
 
 /**
- * @brief  Sends a REQA command to detect if a card is present
- * @param  reqMode The request mode: REQA (0x26) or WUPA (0x52)
- * @param  TagType Buffer to store the 2-byte ATQA response
- * @return MI_OK : if a card is detected
- * 		   MI_ERR: otherwise
+ * @brief  Checks whether an RFID tag/card is present near the reader
+ * @return 1: The tag/card is near
+ * 		   0: Otherwise
  */
-uint8_t MFRC522_Request(uint8_t reqMode, uint8_t *TagType)
+uint8_t MFRC522_IsTagPresent()
 {
-	uint8_t status;
-	uint32_t backlen;
-	ClearState();
-	write(BitFramingReg, 0x07);
-	TagType[0] = reqMode;
-
-	status = send2Card(PCD_TRANSCEIVE, TagType, 1, TagType, &backlen);
-	if ((status != MI_OK) || (backlen != 2))
+	if (sendRequest(PICC_REQA) == MI_OK)
 	{
-		status = MI_ERR;
+		return 1;
 	}
-
-	return status;
+	else
+	{
+		return 0;
+	}
 }
-
 /* ====== BCC & UID Management ====== */
 static void remove_UID(uint8_t* rm, uint8_t src[][4])
 {
@@ -143,7 +155,7 @@ static uint8_t UID_list_is_NOT_full()
 	return (uid_cnt < (MAX_UIDs - 1)) ? 1 : 0;
 }
 
-static void get_UID(uint8_t* src, uint8_t dest[][4])
+static void store_UID(uint8_t* src, uint8_t dest[][4])
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -160,6 +172,31 @@ static uint8_t check_BCC(uint8_t* uid)
 		bcc ^= uid[i];
 	}
 	return (bcc == uid[4]) ? MI_OK : MI_ERR;
+}
+
+/**
+ * @brief  Sends a REQA command to detect if a card is present
+ * @param  reqMode The request mode: REQA (0x26) or WUPA (0x52)
+ * @param  TagType Buffer to store the 2-byte ATQA response
+ * @return MI_OK : if a card is detected
+ * 		   MI_ERR: otherwise
+ */
+static uint8_t sendRequest(uint8_t reqMode)
+{
+	uint8_t tmp[2] = { 0 };
+	uint8_t status;
+	uint32_t backlen;
+	ClearState();
+	write(BitFramingReg, 0x07);
+	tmp[0] = reqMode;
+
+	status = send2Card(PCD_TRANSCEIVE, tmp, 1, tmp, &backlen);
+	if ((status != MI_OK) || (backlen != 2))
+	{
+		status = MI_ERR;
+	}
+
+	return status;
 }
 
 static uint8_t anticoll(uint8_t* uid_out)
