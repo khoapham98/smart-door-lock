@@ -404,25 +404,6 @@ void MFRC522_reset()
 	delay_millisec(50);
 }
 
-void MFRC522_Init()
-{
-	/* configure MFRC522 */
-	write(CommandReg, 0x0F);	/* soft reset */
-	write(TModeReg, 0x80);		/* auto-start */
-	write(TPrescalerReg, 0xA9);	/* f_timer = 13.56e6/(2 * A9h) ~= 39.882KHz -> T_timer ~= 25us */
-	write(TReloadRegH, 0x03); /* set reload value = 03E8h = 1000 */
-	write(TReloadRegL, 0xE8);
-
-	/* used more */
-//	MFRC522_write(TPrescalerReg, 0x3E);
-//	MFRC522_write(TReloadRegH, 0);
-//	MFRC522_write(TReloadRegL, 30);
-
-	write(TxASKReg, 0x40);		/* force 100% ASK */
-	write(ModeReg, 0x3D);
-	AntennaON();
-	delay_millisec(10);
-}
 /**
  * @brief  RFID-MFRC522 initial function
  * PB3	-> SCK
@@ -433,6 +414,20 @@ void MFRC522_Init()
  * GND	-> GND
  * VCC	-> 3V
  */
+void MFRC522_Init()
+{
+	/* configure MFRC522 */
+	write(CommandReg, 0x0F);	/* soft reset */
+	write(TModeReg, 0x80);		/* auto-start */
+	write(TPrescalerReg, 0xA9);	/* f_timer = 13.56e6/(2 * A9h) ~= 39.882KHz -> T_timer ~= 25us */
+	write(TReloadRegH, 0x03); /* set reload value = 03E8h = 1000 */
+	write(TReloadRegL, 0xE8);
+	write(TxASKReg, 0x40);		/* force 100% ASK */
+	write(ModeReg, 0x3D);
+	AntennaON();
+	delay_millisec(10);
+}
+
 void SPI_Init()
 {
 	AHB1_clock_enable(AHB1_GPIOB);

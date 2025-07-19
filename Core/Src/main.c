@@ -7,8 +7,12 @@
 uint8_t uid_ls[MAX_UIDs][4];
 extern uint8_t uid_cnt;
 extern uint8_t button_state;
+extern int button_cnt;
+
 int main()
 {
+
+	HAL_Init();
 	RCC_Init();
 	TIM_Init();
 	SPI_Init();
@@ -19,9 +23,8 @@ int main()
 	{
 		if (MFRC522_IsTagPresent())
 		{
-			switch (button_state)
-			{
-				case IDLE:
+			switch (button_state) {
+				case NORMAL:
 					if (MFRC522_IsValidUID(uid_ls))
 					{
 						// control motor to open the door
@@ -30,7 +33,7 @@ int main()
 				case ADD:
 					MFRC522_CheckAndStoreUID(uid_ls);
 					break;
-				case RM:
+				case REMOVE:
 					MFRC522_RemoveUID(uid_ls);
 					break;
 				default:
@@ -39,6 +42,8 @@ int main()
 		}
 		delay_millisec(200);
 	}
-
 	return 0;
 }
+
+
+
