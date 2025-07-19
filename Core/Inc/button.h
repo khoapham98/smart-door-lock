@@ -14,9 +14,6 @@
 #define GPIOB_BASE_ADDR 	0x40020400
 #define EXTI_BASE_ADDR  	0x40013C00
 #define SYSCFG_BASE_ADDR 	0x40013800
-uint8_t selectMODE();
-uint8_t isPressed();
+
 void BUTTON_Init();
-void ButtonInit();
-char AisPressed();
 #endif /* INC_BUTTON_H_ */

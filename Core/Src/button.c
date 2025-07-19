@@ -9,19 +9,6 @@
 #include "timer.h"
 #include "button.h"
 uint8_t button_state = NORMAL;
-int button_cnt = 0;
-
-/**
- * One click 	: Add UID
- * Double click : Remove UID
- * Press & hold : IDLE mode (open the door)
- */
-void EXTI1_IRQHandler()
-{
-	uint32_t* EXTI_PR = (uint32_t*) (EXTI_BASE_ADDR + 0x14);
-	button_state = selectMODE();
-	*EXTI_PR |= 1 << 1;
-}
 
 static void delay_ms(uint32_t ms)
 {
@@ -31,7 +18,7 @@ static void delay_ms(uint32_t ms)
 	}
 }
 
-uint8_t isPressed()
+static uint8_t isPressed()
 {
 	uint32_t* GPIOB_IDR = (uint32_t*) (GPIOB_BASE_ADDR + 0x10);
 	if (((*GPIOB_IDR >> 1) & 1) == 1)
@@ -44,7 +31,8 @@ uint8_t isPressed()
 	}
 }
 
-uint8_t selectMODE()
+static uint8_t button_cnt = 0;
+static uint8_t selectMODE()
 {
 	uint8_t mode;
 	int time = 1;
@@ -72,6 +60,18 @@ uint8_t selectMODE()
 	}
 	button_cnt = 0;
 	return mode;
+}
+
+/**
+ * One click 	: Add UID
+ * Double click : Remove UID
+ * Press & hold : IDLE mode (open the door)
+ */
+void EXTI1_IRQHandler()
+{
+	uint32_t* EXTI_PR = (uint32_t*) (EXTI_BASE_ADDR + 0x14);
+	button_state = selectMODE();
+	*EXTI_PR |= 1 << 1;
 }
 
 /**
