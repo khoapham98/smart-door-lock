@@ -7,6 +7,7 @@
 #include "main.h"
 #include "clock.h"
 #include "timer.h"
+#include "ssd1306.h"
 #include "button.h"
 uint8_t button_state = NORMAL;
 
@@ -71,11 +72,28 @@ void EXTI1_IRQHandler()
 {
 	uint32_t* EXTI_PR = (uint32_t*) (EXTI_BASE_ADDR + 0x14);
 	button_state = selectMODE();
+	switch (button_state)
+	{
+		case NORMAL:
+			SSD1306_print6x8(".ACCESS MODE.", PAGE0, 0x18);
+			break;
+		case ADD:
+			SSD1306_print6x8(".ENROLL MODE.", PAGE0, 0x18);
+			break;
+		case REMOVE:
+			SSD1306_print6x8(".REMOVE MODE.", PAGE0, 0x18);
+			break;
+		default:
+			break;
+	}
 	*EXTI_PR |= 1 << 1;
 }
 
 /**
  * @brief  Configure PB1 for buttons and use external interrupt to detect when the button is pressed
+ * PB1	-> OUT
+ * GND	-> GND
+ * VCC	-> 3V
  */
 void BUTTON_Init()
 {

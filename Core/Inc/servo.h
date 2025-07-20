@@ -9,7 +9,7 @@
 #define INC_SERVO_H_
 
 #define 	TIM2_BASE_ADDR 		0x40000000
-#define 	GPIOA_BASE_ADDR		0x40020000
+#define 	GPIOB_BASE_ADDR		0x40020400
 void door_open();
 void door_close();
 void SERVO_setAngle(uint8_t angle);

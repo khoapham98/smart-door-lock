@@ -1,0 +1,5 @@
+../Core/Src/servo.c:12:6:door_open	1
+../Core/Src/servo.c:19:6:door_close	1
+../Core/Src/servo.c:24:13:SERVO_Ctrl	1
+../Core/Src/servo.c:30:6:SERVO_setAngle	3
+../Core/Src/servo.c:51:6:SERVO_Init	1

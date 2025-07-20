@@ -44,15 +44,15 @@ void SERVO_setAngle(uint8_t angle)
 }
 
 /**	=== TIMER 2 CHANNEL 3
- * PWM	-> PB10
- * VCC	-> 5V
+ * PB10	-> PWM
  * GND	-> GND
+ * VCC	-> 5V
  */
 void SERVO_Init()
 {
 	AHB1_clock_enable(AHB1_GPIOB);
-	uint32_t* GPIOB_MODER = (uint32_t*) (GPIOB_BASE + 0x00);
-	uint32_t* GPIOB_AFRH  = (uint32_t*) (GPIOB_BASE + 0x24);
+	uint32_t* GPIOB_MODER = (uint32_t*) (GPIOB_BASE_ADDR + 0x00);
+	uint32_t* GPIOB_AFRH  = (uint32_t*) (GPIOB_BASE_ADDR + 0x24);
 	/* configure PB10 as AF */
 	*GPIOB_MODER &= ~(0b11 << (10 * 2));
 	*GPIOB_MODER |= 0b10 << (10 * 2);
@@ -87,4 +87,6 @@ void SERVO_Init()
 	*TIM2_EGR |= 1 << 0;
 	/* enable counter */
 	*TIM2_CR1 |= 1 << 0;
+
+	door_close();
 }

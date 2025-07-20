@@ -7,9 +7,9 @@
 #include "main.h"
 #include "clock.h"
 #include "timer.h"
-#include <string.h>
 #include "ssd1306.h"
 
+static uint8_t get_size(char* s);
 static void OLED_WriteData(uint8_t data);
 static void OLED_WriteCMD(uint8_t cmd);
 static void gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
@@ -101,6 +101,12 @@ uint8_t font8x16[][16] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //
 };
+
+void SSD1306_default_mode()
+{
+	SSD1306_print6x8(".ACCESS MODE.", PAGE0, 0x18);
+	SSD1306_print8x16("SCAN YOUR TAG", PAGE2, 12);
+}
 
 /**
  * @brief  Clear page (0-3)

@@ -33,6 +33,7 @@ typedef enum
 	CMD = 0x00,
 	DATA = 0x40
 } ctrl_t;
+void SSD1306_default_mode();
 void SSD1306_print8x16(char* str, uint8_t page, uint8_t col);
 void SSD1306_print6x8(char* str, uint8_t page, uint8_t col);
 void SSD1306_print_alphabet();
