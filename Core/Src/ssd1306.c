@@ -1,0 +1,272 @@
+/*
+ * oled.c
+ *
+ *  Created on: Jun 20, 2025
+ *      Author: ACER
+ */
+#include "main.h"
+#include "clock.h"
+#include "timer.h"
+#include <string.h>
+#include "ssd1306.h"
+static void OLED_WriteData(uint8_t data);
+static void OLED_WriteCMD(uint8_t cmd);
+
+uint8_t font6x8[][6] = {
+	{ 0xfe, 0x11, 0x11, 0x11, 0xfe, 0x00 },	// a
+	{ 0xff, 0x89, 0x89, 0x89, 0x76, 0x00 }, // b
+	{ 0x7e, 0x81, 0x81, 0x81, 0x42, 0x00 }, // c
+	{ 0xff, 0x81, 0x81, 0x42, 0x3c, 0x00 }, // d
+	{ 0xff, 0x89, 0x89, 0x89, 0x81, 0x00 }, // e
+	{ 0xff, 0x09, 0x09, 0x09, 0x01, 0x00 }, // f
+	{ 0x7e, 0x81, 0x91, 0x91, 0x72, 0x00 }, // g
+	{ 0xff, 0x08, 0x08, 0x08, 0xff, 0x00 }, // h
+	{ 0x81, 0x81, 0xff, 0x81, 0x81, 0x00 },	// i
+	{ 0x41, 0x81, 0x81, 0x7f, 0x01, 0x00 }, // j
+	{ 0xff, 0x18, 0x24, 0x42, 0x81, 0x00 }, // k
+	{ 0xff, 0x80, 0x80, 0x80, 0x80, 0x00 }, // l
+	{ 0xff, 0x02, 0x04, 0x02, 0xff, 0x00 }, // m
+	{ 0xff, 0x03, 0x1C, 0x60, 0xff, 0x00 }, // n
+	{ 0x7e, 0x81, 0x81, 0x81, 0x7e, 0x00 }, // o
+	{ 0xff, 0x11, 0x11, 0x11, 0x0e, 0x00 }, // p
+	{ 0x7e, 0x81, 0xa1, 0x41, 0xbe, 0x00 }, // q
+	{ 0xff, 0x11, 0x31, 0x51, 0x8e, 0x00 }, // r
+	{ 0x46, 0x89, 0x89, 0x89, 0x72, 0x00 }, // s
+	{ 0x01, 0x01, 0xff, 0x01, 0x01, 0x00 }, // t
+	{ 0x7f, 0x80, 0x80, 0x80, 0x7f, 0x00 }, // u
+	{ 0x1f, 0x60, 0x80, 0x60, 0x1f, 0x00 }, // v
+	{ 0x7f, 0x80, 0x70, 0x80, 0x7f, 0x00 }, // w
+	{ 0x81, 0x66, 0x18, 0x66, 0x81, 0x00 }, // x
+	{ 0x07, 0x08, 0xf0, 0x08, 0x07, 0x00 }, // y
+	{ 0xe1, 0x91, 0x89, 0x85, 0x83, 0x00 }, // z
+	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //
+	{ 0x00, 0x18, 0x18, 0x00, 0x00, 0x00 }, // .
+};
+
+static uint8_t get_size(char* s)
+{
+	uint8_t cnt = 0;
+	while (s[cnt] != 0) cnt++;
+	return cnt;
+}
+
+/**
+ * For OLED 0.91 inch 128x32 pixels
+ * 0 <= page <= 3
+ * 0 <= column <= 127
+ */
+void SSD1306_gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end)
+{
+	OLED_WriteCMD(0x21);  		// Set column address
+	OLED_WriteCMD(col_start);  	// Column start = 32
+	OLED_WriteCMD(col_end);  	// Column end = 96
+
+	OLED_WriteCMD(0x22);  		// Set page address
+	OLED_WriteCMD(page_start);  // Page start = 0
+	OLED_WriteCMD(page_end);  	// Page end = 0
+}
+
+void SSD1306_print_mode(RFID_mode_t mode)
+{
+	SSD1306_gotoxy(0x00, 0x00, 0x18, 0x68);
+	char* string;
+	if (mode == ACCESS)			string = ".ACCESS MODE.";
+	else if (mode == ENROLL) 	string = ".ENROLL MODE.";
+	else if (mode == RMOVE)		string = ".REMOVE MODE.";
+	SSD1306_print_string(string);
+}
+
+void SSD1306_print_string(char* str)
+{
+	int size = get_size(str);
+	for (int i = 0; i < size; i++)
+	{
+		int index = str[i] - 65;
+		if (str[i] >= 'a') index -= 32;
+		else if (str[i] == ' ') index = 26;
+		else if (str[i] == '.') index = 27;
+		for (int j = 0; j < 6; j++)
+		{
+			OLED_WriteData(font6x8[index][j]);
+		}
+	}
+}
+
+void SSD1306_print_alphabet()
+{
+	for (int i = 0; i < 26; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			OLED_WriteData(font6x8[i][j]);
+		}
+		delay_sec(1);
+	}
+}
+
+static void set_default()
+{
+	OLED_WriteCMD(0x21);  // Set column address
+	OLED_WriteCMD(0x00);  // Column start = 0
+	OLED_WriteCMD(0x7F);  // Column end = 127
+
+	// Set page address range (0 - 31) ~ 32px
+	OLED_WriteCMD(0x22);  // Set page address
+	OLED_WriteCMD(0x00);  // Page start = 0
+	OLED_WriteCMD(0x03);  // Page end = 3
+}
+
+void SSD1306_ClrScr()
+{
+	set_default();
+    /* Fill whole screen (4 pages x 128 columns) */
+    for (int page = 0; page < 4; page++)
+    {
+        for (int col = 0; col < 128; col++)
+        {
+            OLED_WriteData(0x00);
+        }
+    }
+}
+
+void SSD1306_FillWhite()
+{
+	set_default();
+    /* Fill whole screen (4 pages x 128 columns) */
+    for (int page = 0; page < 4; page++)
+    {
+        for (int col = 0; col < 128; col++)
+        {
+            OLED_WriteData(0xFF);
+        }
+    }
+}
+
+/*
+ * @brief  This function is used to initialize OLED SSD1306
+ * PA8	-> SCL
+ * PC9	-> SDA
+ * GND	-> GND
+ * VCC	-> 3V
+ */
+void SSD1306_Init()
+{
+	delay_millisec(100);
+	OLED_WriteCMD(0xAE); //display off
+	OLED_WriteCMD(0x20); //Set Memory Addressing Mode
+	OLED_WriteCMD(0x00); // 00b,Horizontal Addressing Mode; 01b,Vertical Addressing Mode;
+	OLED_WriteCMD(0xB0); //Set Page Start Address for Page Addressing Mode,0-7
+	OLED_WriteCMD(0xC8); //Set COM Output Scan Direction
+	OLED_WriteCMD(0x00); //---set low column address
+	OLED_WriteCMD(0x10); //---set high column address
+	OLED_WriteCMD(0x40); //--set start line address - CHECK
+	OLED_WriteCMD(0xFF);
+	OLED_WriteCMD(0xA1); //--set segment re-map 0 to 127 - CHECK
+	OLED_WriteCMD(0xA6); //--set normal color
+	OLED_WriteCMD(0xA8); //--set multiplex ratio(1 to 64) - CHECK
+	OLED_WriteCMD(0x1F); //
+	OLED_WriteCMD(0xA4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
+	OLED_WriteCMD(0xD3); //-set display offset - CHECK
+	OLED_WriteCMD(0x00); //-not offset
+	OLED_WriteCMD(0xD5); //--set display clock divide ratio/oscillator frequency
+	OLED_WriteCMD(0xF0); //--set divide ratio
+	OLED_WriteCMD(0xD9); //--set pre-charge period
+	OLED_WriteCMD(0x22); //
+	OLED_WriteCMD(0xDA); //--set com pins hardware configuration - CHECK
+	OLED_WriteCMD(0x02);
+	OLED_WriteCMD(0xDB); //--set vcomh
+	OLED_WriteCMD(0x20); //0x20,0.77xVcc
+	OLED_WriteCMD(0x8D); //--set DC-DC enable
+	OLED_WriteCMD(0x14); //
+	OLED_WriteCMD(0xAF); //--turn on SSD1306 panel
+	SSD1306_ClrScr();
+}
+
+
+static void I2C_send_byte(uint8_t data)
+{
+	uint8_t* I2C_DR   = (uint8_t*) (I2C3_BASE_ADDR + 0x10);
+	uint32_t* I2C_SR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x14);
+	*I2C_DR = data;
+	while (((*I2C_SR1 >> 7) & 1) == 0);	// wait until data has been transferred
+}
+
+static void I2C_stop()
+{
+	uint32_t* I2C_CR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x00);
+	*I2C_CR1 |= 1 << 9;		// send STOP
+}
+
+static void I2C_send_addr(uint8_t slave_addr, mode_t mode)
+{
+	uint8_t* I2C_DR   = (uint8_t*) (I2C3_BASE_ADDR + 0x10);
+	uint32_t* I2C_SR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x14);
+	uint32_t* I2C_SR2 = (uint32_t*) (I2C3_BASE_ADDR + 0x18);
+	/*	ADDRESS PHASE  */
+	// send address to slave and select WRITE mode
+	*I2C_DR = (slave_addr << 1) | mode;
+	// wait until the address transmission is completed
+	while (((*I2C_SR1 >> 1) & 1) == 0);
+	// read SR1 and SR2 to clear ADDR bit
+	volatile int tmp = *I2C_SR1;
+	tmp = *I2C_SR2;
+}
+
+static void I2C_start()
+{
+	uint32_t* I2C_CR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x00);
+	uint32_t* I2C_SR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x14);
+	// send START
+	*I2C_CR1 |= 1 << 8;
+	// wait until START condition is generated and operate at Master mode
+	while ((*I2C_SR1 & 1) == 0);
+}
+
+static void OLED_WriteData(uint8_t data)
+{
+	I2C_start();
+	I2C_send_addr(SSD1306_ADDR, W);
+	I2C_send_byte(DATA);
+	I2C_send_byte(data);
+	I2C_stop();
+}
+
+static void OLED_WriteCMD(uint8_t cmd)
+{
+	I2C_start();
+	I2C_send_addr(SSD1306_ADDR, W);
+	I2C_send_byte(CMD);
+	I2C_send_byte(cmd);
+	I2C_stop();
+}
+
+void I2C_Init()
+{
+	AHB1_clock_enable(AHB1_GPIOA);
+	AHB1_clock_enable(AHB1_GPIOC);
+	uint32_t* GPIOA_MODER = (uint32_t*) (GPIOA_BASE_ADDR + 0x00);
+	uint32_t* GPIOC_MODER = (uint32_t*) (GPIOC_BASE_ADDR + 0x00);
+	uint32_t* GPIOA_AFRH  = (uint32_t*) (GPIOA_BASE_ADDR + 0x24);
+	uint32_t* GPIOC_AFRH  = (uint32_t*) (GPIOC_BASE_ADDR + 0x24);
+	/* set PA8 & PC9 as AF */
+	*GPIOA_MODER &= ~(0b11 << (8 * 2));
+	*GPIOC_MODER &= ~(0b11 << (9 * 2));
+	*GPIOA_MODER |= 0b10 << (8 * 2);
+	*GPIOC_MODER |= 0b10 << (9 * 2);
+	/* select AF04 for PA8 & PC9 */
+	*GPIOA_AFRH &= ~(0xf << 0);
+	*GPIOC_AFRH &= ~(0xf << 4);
+	*GPIOA_AFRH |= 4 << 0;
+	*GPIOC_AFRH |= 4 << 4;
+
+	APB1_clock_enable(APB1_I2C3);
+	uint32_t* I2C_CR1 = (uint32_t*) (I2C3_BASE_ADDR + 0x00);
+	uint32_t* I2C_CR2 = (uint32_t*) (I2C3_BASE_ADDR + 0x04);
+	uint32_t* I2C_CCR = (uint32_t*) (I2C3_BASE_ADDR + 0x1C);
+	/* f = 32MHz */
+	*I2C_CR2 |= 32 << 0;
+	/* set SCL clock = 100 kHz */
+	*I2C_CCR |= 160 << 0;
+	/* enable I2C */
+	*I2C_CR1 |= (1 << 0);
+}
