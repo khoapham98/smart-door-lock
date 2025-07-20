@@ -29,6 +29,8 @@ typedef enum
 	CMD = 0x00,
 	DATA = 0x40
 } ctrl_t;
+void SSD1306_print_status(char* str);
+void SSD1306_gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
 void SSD1306_print_mode(RFID_mode_t mode);
 void SSD1306_print_string(char* str);
 void SSD1306_print_alphabet();
