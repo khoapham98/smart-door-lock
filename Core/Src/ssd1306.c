@@ -12,6 +12,7 @@
 
 static void OLED_WriteData(uint8_t data);
 static void OLED_WriteCMD(uint8_t cmd);
+static void gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
 
 uint8_t font6x8[][6] = {
 	{ 0xfe, 0x11, 0x11, 0x11, 0xfe, 0x00 },	// a
@@ -101,20 +102,36 @@ uint8_t font8x16[][16] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //
 };
 
-static uint8_t get_size(char* s)
+/**
+ * @brief  Clear page (0-3)
+ * @param  page  Page want to clear
+ */
+void SSD1306_ClrPage(uint8_t page)
 {
-	uint8_t cnt = 0;
-	while (s[cnt] != 0) cnt++;
-	return cnt;
+	gotoxy(page, page, MIN_COL, MAX_COL);
+	for (int i = MIN_COL; i < MAX_COL; i++)
+	{
+		OLED_WriteData(0x00);
+	}
 }
 
-void SSD1306_print_status(char* str)
+/**
+ * @brief  Display a string on the OLED screen using 6x8 font
+ * @param  str   Pointer to the null-terminated string to display
+ * @param  col   Column start position (0–127)
+ * @param  page  Page start position (0–3)
+ * 				 Each character occupies 2 pages (16 pixels tall)
+ * 				 Make sure 'page' and 'page+1' are both within screen range (0–3)
+ */
+void SSD1306_print8x16(char* str, uint8_t page, uint8_t col)
 {
+	SSD1306_ClrPage(page);
+	SSD1306_ClrPage(page + 1);
 	int size = get_size(str);
-	int col = 0;
+	int c = col;
 	for (int i = 0; i < size; i++)
 	{
-		SSD1306_gotoxy(2, 2, col, 127);
+		gotoxy(page, page, c, MAX_COL);
 		int index = str[i] - 65;
 		if (str[i] >= 'a') 		index -= 32;
 		else if (str[i] == ' ') index = 26;
@@ -123,26 +140,25 @@ void SSD1306_print_status(char* str)
 		{
 			if (j == 8)
 			{
-				SSD1306_gotoxy(3, 3, col, 127);
+				gotoxy(page + 1, page + 1, c, MAX_COL);
 			}
 			OLED_WriteData(font8x16[index][j]);
 		}
-		col += 8;
+		c += 8;
 	}
 }
 
-void SSD1306_print_mode(RFID_mode_t mode)
+/**
+ * @brief  Display a string on the OLED screen using 6x8 font.
+ * @param  str   Pointer to the null-terminated string to display
+ * @param  col   Column start position (0–127)
+ * @param  page  Page start position (0–3)
+ * 				 Each page is 8 pixels tall
+ */
+void SSD1306_print6x8(char* str, uint8_t page, uint8_t col)
 {
-	SSD1306_gotoxy(0x00, 0x00, 0x18, 0x68);
-	char* string;
-	if (mode == ACCESS)		 string = ".ACCESS MODE.";
-	else if (mode == ENROLL) string = ".ENROLL MODE.";
-	else if (mode == RMOVE)	 string = ".REMOVE MODE.";
-	SSD1306_print_string(string);
-}
-
-void SSD1306_print_string(char* str)
-{
+	SSD1306_ClrPage(page);
+	gotoxy(page, page, col, MAX_COL);
 	int size = get_size(str);
 	for (int i = 0; i < size; i++)
 	{
@@ -159,6 +175,7 @@ void SSD1306_print_string(char* str)
 
 void SSD1306_print_alphabet()
 {
+	SSD1306_ClrScr();
 	for (int i = 0; i < 26; i++)
 	{
 		for (int j = 0; j < 6; j++)
@@ -169,37 +186,9 @@ void SSD1306_print_alphabet()
 	}
 }
 
-/**
- * For OLED 0.91 inch 128x32 pixels
- * 0 <= page <= 3
- * 0 <= column <= 127
- */
-void SSD1306_gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end)
-{
-	OLED_WriteCMD(0x21);  		// Set column address
-	OLED_WriteCMD(col_start);  	// Column start = 32
-	OLED_WriteCMD(col_end);  	// Column end = 96
-
-	OLED_WriteCMD(0x22);  		// Set page address
-	OLED_WriteCMD(page_start);  // Page start = 0
-	OLED_WriteCMD(page_end);  	// Page end = 0
-}
-
-static void set_default()
-{
-	OLED_WriteCMD(0x21);  // Set column address
-	OLED_WriteCMD(0x00);  // Column start = 0
-	OLED_WriteCMD(0x7F);  // Column end = 127
-
-	// Set page address range (0 - 31) ~ 32px
-	OLED_WriteCMD(0x22);  // Set page address
-	OLED_WriteCMD(0x00);  // Page start = 0
-	OLED_WriteCMD(0x03);  // Page end = 3
-}
-
 void SSD1306_ClrScr()
 {
-	set_default();
+	gotoxy(PAGE0, PAGE3, MIN_COL, MAX_COL);
     /* Fill whole screen (4 pages x 128 columns) */
     for (int page = 0; page < 4; page++)
     {
@@ -212,7 +201,7 @@ void SSD1306_ClrScr()
 
 void SSD1306_FillWhite()
 {
-	set_default();
+	gotoxy(PAGE0, PAGE3, MIN_COL, MAX_COL);
     /* Fill whole screen (4 pages x 128 columns) */
     for (int page = 0; page < 4; page++)
     {
@@ -263,6 +252,28 @@ void SSD1306_Init()
 	SSD1306_ClrScr();
 }
 
+static uint8_t get_size(char* s)
+{
+	uint8_t cnt = 0;
+	while (s[cnt] != 0) cnt++;
+	return cnt;
+}
+
+/**
+ * For OLED 0.91 inch 128x32 pixels
+ * 0 <= page <= 3
+ * 0 <= column <= 127
+ */
+static void gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end)
+{
+	OLED_WriteCMD(0x21);  		// Set column address
+	OLED_WriteCMD(col_start);  	// Column start = 32
+	OLED_WriteCMD(col_end);  	// Column end = 96
+
+	OLED_WriteCMD(0x22);  		// Set page address
+	OLED_WriteCMD(page_start);  // Page start = 0
+	OLED_WriteCMD(page_end);  	// Page end = 0
+}
 
 static void I2C_send_byte(uint8_t data)
 {

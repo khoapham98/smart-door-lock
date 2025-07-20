@@ -12,8 +12,12 @@
 #define 	GPIOA_BASE_ADDR 	0x40020000
 #define 	GPIOC_BASE_ADDR 	0x40020800
 #define 	SSD1306_ADDR 		0x3C
-#define 	PAGE 				4
-#define 	COLUMN 				128
+#define 	PAGE0 				0x00
+#define 	PAGE1 				0x01
+#define 	PAGE2 				0x02
+#define 	PAGE3 				0x03
+#define 	MIN_COL 			0x00
+#define 	MAX_COL 			0x7F
 
 typedef enum
 {
@@ -29,13 +33,12 @@ typedef enum
 	CMD = 0x00,
 	DATA = 0x40
 } ctrl_t;
-void SSD1306_print_status(char* str);
-void SSD1306_gotoxy(uint8_t page_start, uint8_t page_end, uint8_t col_start, uint8_t col_end);
-void SSD1306_print_mode(RFID_mode_t mode);
-void SSD1306_print_string(char* str);
+void SSD1306_print8x16(char* str, uint8_t page, uint8_t col);
+void SSD1306_print6x8(char* str, uint8_t page, uint8_t col);
 void SSD1306_print_alphabet();
-void SSD1306_FillWhite();
+void SSD1306_ClrPage(uint8_t page);
 void SSD1306_ClrScr();
+void SSD1306_FillWhite();
 void SSD1306_Init();
 void I2C_Init();
 
