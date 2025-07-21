@@ -1,0 +1,5 @@
+../Core/Src/stm32_uart.c:12:6:send_msg	1
+../Core/Src/stm32_uart.c:17:6:UART_sendString	2
+../Core/Src/stm32_uart.c:26:17:get_size	2
+../Core/Src/stm32_uart.c:33:6:UART_sendChar	2
+../Core/Src/stm32_uart.c:46:6:UART_Init	1

@@ -5,6 +5,7 @@
 #include "button.h"
 #include "servo.h"
 #include "ssd1306.h"
+#include "stm32_uart.h"
 
 uint8_t uid_ls[MAX_UIDs][4];
 extern uint8_t button_state;
@@ -19,8 +20,9 @@ int main()
 	MFRC522_Init();
 	SERVO_Init();
 	SSD1306_Init();
-
 	SSD1306_default_mode();
+	UART_Init();
+
 	while (1)
 	{
 		if (MFRC522_IsTagPresent())
@@ -32,7 +34,9 @@ int main()
 					if (MFRC522_IsValidUID(uid_ls))
 					{
 						SSD1306_print8x16("ACCESS GRANTED", PAGE2, 8);
+						UART_sendString("The door has been unlocked!\n");
 						door_open();
+						door_close();
 					}
 					else
 					{

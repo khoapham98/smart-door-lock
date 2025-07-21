@@ -300,7 +300,7 @@ static uint8_t SPI_Receive(uint8_t reg_addr)
 	while (((*SPI_SR >> 7) & 1) == 1);	/* wait until SPI is free */
 
 	/* data read sequence */
-	while ((*SPI_SR & 1) == 0);			/* wait until the RX buffer is not empty */
+ 	while ((*SPI_SR & 1) == 0);			/* wait until the RX buffer is not empty */
 	uint8_t data = *SPI_DR;				/* read data */
 
 	return data;

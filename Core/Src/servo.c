@@ -13,7 +13,6 @@ void door_open()
 {
 	SERVO_setAngle(100);
 	delay_sec(4);
-	door_close();
 }
 
 void door_close()
